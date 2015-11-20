@@ -41,6 +41,7 @@ class TemplateSpec extends Specification {
 
       TwiceTest apply(1) mustEqual Twice(1, 1)
       TwiceTest unapply Twice(1, 1) mustEqual Some(1)
+      TwiceTest unapply Twice(1, 2) mustEqual None
     }
   }
 

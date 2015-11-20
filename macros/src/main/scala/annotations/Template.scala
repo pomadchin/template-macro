@@ -4,7 +4,7 @@ import utils.MacroApplication
 import scala.reflect.macros.whitebox.Context
 import scala.language.experimental.macros
 import scala.annotation.StaticAnnotation
-import scala.collection.mutable.{Map => MMap}
+import scala.collection.mutable.{Map => MMap, ListBuffer}
 
 final class template(fun: Any) extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro templateMacro.apply
@@ -23,8 +23,8 @@ class templateMacro(val c: Context) extends MacroApplication {
     val q"(..${fargs: List[ValDef]}) => ${fbody: Tree}" = tree
     val fargsMap = fargs.zipWithIndex.map { case (v, i) => v.name.toString -> (i, v.name) }.toMap
 
-    // TODO: avoid mutable collection usage
-    val indexedMutableBuffer = MMap[Int, (Int, Tree)]() // (index, (occurrence, tree))
+    // TODO: avoid mutable collections usage
+    val indexedMutableBuffer = MMap[Int, ListBuffer[Tree]]()
 
     def recursiveMatch(subtree: List[Tree]): List[Tree] = {
       subtree.map {
@@ -32,16 +32,13 @@ class templateMacro(val c: Context) extends MacroApplication {
         case arg => {
           fargsMap.get(arg.toString()).fold(arg){ case (index, fa) =>
             val indexedTerm = indexedMutableBuffer.get(index).fold({
-              val str  = s"${fa}0"
-              val term = TermName(str)
-              indexedMutableBuffer.put(index, 0 -> q"$term")
+              val term = TermName(s"${fa}0")
+              indexedMutableBuffer.put(index, ListBuffer(q"$term"))
               term
-            })({ case (occurrences, _) =>
-              val co = occurrences + 1
-              val str = s"$fa$co"
-              val term = TermName(str)
-              indexedMutableBuffer.put(index, co -> q"$term")
-              TermName(str)
+            })({ case buff =>
+              val term = TermName(s"$fa${buff.length}")
+              buff += q"$term"
+              term
             })
             pq"$indexedTerm @ ${Ident(termNames.WILDCARD)}" }
         }
@@ -49,7 +46,11 @@ class templateMacro(val c: Context) extends MacroApplication {
     }
 
     val result = recursiveMatch(List(fbody)).head
-    val buffer = indexedMutableBuffer.toList.sortBy(_._1).map(_._2._2)
+    val sortedBuffer = indexedMutableBuffer.toList.sortBy(_._1)
+
+    val buffer =
+      if(sortedBuffer.map(_._2.length > 1).reduce(_ && _)) cq"$result => None"
+      else cq"$result => Some((..${sortedBuffer.flatMap(_._2)}))"
 
     c.Expr[Any] {
       annottees.map(_.tree).toList match {
@@ -57,8 +58,8 @@ class templateMacro(val c: Context) extends MacroApplication {
           q"""
           object $name extends ..$parents {
             def apply = $tree
-            def unapply(a: $unapplyArgType) = a match {
-              case $result => Some((..$buffer))
+            def unapply(a: $unapplyArgType): Option[(..${expr.actualType.typeArgs.init})] = a match {
+              case $buffer
               case _ => None
             }
             ..$body
