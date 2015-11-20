@@ -41,7 +41,7 @@ class TemplateSpec extends Specification {
       ) object TwiceTest
 
       TwiceTest apply(1) mustEqual Twice(1, 1)
-      TwiceTest unapply Twice(1, 1) mustEqual Some(1)
+      TwiceTest unapply Twice(1, 1) mustEqual None
       TwiceTest unapply Twice(1, 2) mustEqual None
     }
 
@@ -58,7 +58,7 @@ class TemplateSpec extends Specification {
       HeteroTwiceTestInt unapply HeteroTwice(1, "", "") mustEqual Some(1)
 
       HeteroTwiceTestString apply("s") mustEqual HeteroTwice(0, "s", "s")
-      HeteroTwiceTestString unapply HeteroTwice(0, "s", "s") mustEqual Some("s")
+      HeteroTwiceTestString unapply HeteroTwice(0, "s", "s") mustEqual None
 
     }
   }
