@@ -12,6 +12,7 @@ case class Inner(i: Int, inner: InnerInner)
 case class Outer(i: Int, inner: Inner)
 
 case class Twice(first: Int, second: Int)
+case class HeteroTwice(first: Int, second: String, third: String)
 
 class TemplateSpec extends Specification {
 
@@ -42,6 +43,23 @@ class TemplateSpec extends Specification {
       TwiceTest apply(1) mustEqual Twice(1, 1)
       TwiceTest unapply Twice(1, 1) mustEqual Some(1)
       TwiceTest unapply Twice(1, 2) mustEqual None
+    }
+
+    "process several time usage of a function argument in its body (different types)" in {
+      @template(
+        (i: Int) => HeteroTwice(i, "", "")
+      ) object HeteroTwiceTestInt
+
+      @template(
+        (s: String) => HeteroTwice(0, s, s)
+      ) object HeteroTwiceTestString
+
+      HeteroTwiceTestInt apply(1) mustEqual HeteroTwice(1, "", "")
+      HeteroTwiceTestInt unapply HeteroTwice(1, "", "") mustEqual Some(1)
+
+      HeteroTwiceTestString apply("s") mustEqual HeteroTwice(0, "s", "s")
+      HeteroTwiceTestString unapply HeteroTwice(0, "s", "s") mustEqual Some("s")
+
     }
   }
 
