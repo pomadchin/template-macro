@@ -59,7 +59,6 @@ class TemplateSpec extends Specification {
 
       HeteroTwiceTestString apply("s") mustEqual HeteroTwice(0, "s", "s")
       HeteroTwiceTestString unapply HeteroTwice(0, "s", "s") mustEqual None
-
     }
   }
 
